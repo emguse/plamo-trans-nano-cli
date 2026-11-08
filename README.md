@@ -1,6 +1,10 @@
 # plamo-trans
 
 [PLaMo 3 Translate 0.8B GGUF](https://huggingface.co/pfnet/plamo-3-translate-0.8b-GGUF) を使う翻訳CLI。
+
+> [!IMPORTANT]
+> モデルは [PLaMo Community License](https://plamo.preferredai.jp/info/plamo-community-license-en) で提供されています。**非商用利用は無料ですが、商用利用には条件（登録・ライセンス等）があります。** 利用前に必ずライセンス本文を確認してください。
+
 `llama serve`（または `llama-server`）を自動起動し、HF キャッシュ（`refs/main` の snapshot）のGGUFを優先利用します。
 
 ```bash
@@ -27,6 +31,11 @@ The weather is nice today.
 - 端末では ←/→（行内編集）、↑/↓（入力履歴）、Home/End などの readline 操作が使えます。履歴は `~/.local/state/plamo-trans/history`（`XDG_STATE_HOME` 優先）に最大1000行保存されます。
 - Ctrl-D（EOF）でも入力中のテキストを確定し、終了します。
 - プロンプト `> ` は stderr に出るため、stdout をパイプしても翻訳結果だけが流れます。パイプで入力する場合も、入力同士を空行で区切ってください。
+
+## 入力の安全対策
+- 1回のリクエストは 30,000 文字まで（超える場合は `-f` で分割翻訳）。stdin / ファイルは 200 万文字まで。
+- 本文・`--context`・`--glossary` にPLaMo の予約トークン（`<|plamo` で始まる特殊トークン）を含むとエラー。
+- 端末へ出力するときは制御文字（ESC など）を除去します。ファイル（`-o`）やパイプへはそのまま出力します。
 
 ## オフライン動作
 モデルは常にローカルの HF キャッシュ（`refs/main` が指す snapshot）を優先して使います。

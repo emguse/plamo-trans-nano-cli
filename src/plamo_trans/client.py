@@ -30,6 +30,13 @@ class Options:
     context: str | None = None
     max_tokens: int = 2048
 
+    def check_extras(self) -> None:
+        if self.context:
+            check_text(self.context, "context", 8_000)
+        for s, t in self.glossary:
+            check_text(s, "glossary", 500)
+            check_text(t, "glossary", 500)
+
     def validate(self) -> None:
         self.target, self.source = norm_lang(self.target), norm_lang(self.source)
         auto = self.target in (None, "auto")
@@ -53,9 +60,14 @@ class Options:
         return kw
 
 
-def check_text(text: str) -> None:
+MAX_REQUEST_CHARS = 30_000  # one request must fit in the context window; longer text goes through -f (chunked)
+
+
+def check_text(text: str, what: str = "input", limit: int = MAX_REQUEST_CHARS) -> None:
     if "<|plamo:" in text:
-        raise TranslateError("input contains reserved token '<|plamo:'")
+        raise TranslateError(f"{what} contains reserved token '<|plamo:'")
+    if len(text) > limit:
+        raise TranslateError(f"{what} is too long ({len(text)} > {limit} chars); use -f to translate in chunks")
 
 
 class Client:
