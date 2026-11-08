@@ -1,6 +1,10 @@
 # plamo-trans
 
 [PLaMo 3 Translate 0.8B GGUF](https://huggingface.co/pfnet/plamo-3-translate-0.8b-GGUF) を使う翻訳CLI。
+
+> [!IMPORTANT]
+> モデルは [PLaMo Community License](https://plamo.preferredai.jp/info/plamo-community-license-en) で提供されています。**非商用利用は無料ですが、商用利用には条件（登録・ライセンス等）があります。** 利用前に必ずライセンス本文を確認してください。
+
 `llama serve`（または `llama-server`）を自動起動し、HF キャッシュ（`refs/main` の snapshot）のGGUFを優先利用します。
 
 ```bash
@@ -30,7 +34,7 @@ The weather is nice today.
 
 ## 入力の安全対策
 - 1回のリクエストは 30,000 文字まで（超える場合は `-f` で分割翻訳）。stdin / ファイルは 200 万文字まで。
-- 本文・`--context`・`--glossary` に予約トークン `<|plamo:` を含むとエラー。
+- 本文・`--context`・`--glossary` にPLaMo の予約トークン（`<|plamo` で始まる特殊トークン）を含むとエラー。
 - 端末へ出力するときは制御文字（ESC など）を除去します。ファイル（`-o`）やパイプへはそのまま出力します。
 
 ## オフライン動作
