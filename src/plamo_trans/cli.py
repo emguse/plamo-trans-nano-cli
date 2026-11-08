@@ -72,15 +72,53 @@ def translate_doc(client: Client, text: str, opt: Options, out) -> None:
         out.flush()
 
 
+_READLINE = False
+
+
+def setup_readline() -> None:
+    """Enable arrow-key editing and input history when stdin is a terminal."""
+    global _READLINE
+    if not sys.stdin.isatty():
+        return
+    try:
+        import atexit
+        import readline
+    except ImportError:
+        return
+    readline.parse_and_bind("set enable-bracketed-paste off")  # keep "blank line confirms" for pasted text
+    base = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state")
+    hist = base / "plamo-trans" / "history"
+    try:
+        hist.parent.mkdir(parents=True, exist_ok=True)
+        readline.set_history_length(1000)
+        if hist.exists():
+            readline.read_history_file(hist)
+        atexit.register(lambda: _save_history(readline, hist))
+    except OSError:
+        pass
+    _READLINE = True
+
+
+def _save_history(readline, hist: Path) -> None:
+    try:
+        readline.write_history_file(hist)
+    except OSError:
+        pass
+
+
 def read_block() -> str | None:
     """Read lines until a blank line (or EOF). A leading /command is returned at once. None = EOF."""
     lines: list[str] = []
     while True:
-        if sys.stdin.isatty():
-            sys.stderr.write("> " if not lines else "  ")  # prompt on stderr, never mixed into output
-            sys.stderr.flush()
+        prompt = "> " if not lines else "  "
         try:
-            line = input()
+            if _READLINE and sys.stdout.isatty():
+                line = input(prompt)  # readline needs to know the prompt to redraw correctly
+            else:
+                if sys.stdin.isatty():
+                    sys.stderr.write(prompt)  # prompt on stderr, never mixed into output
+                    sys.stderr.flush()
+                line = input()
         except EOFError:
             return "\n".join(lines) if lines else None
         if not lines and line.strip().startswith("/"):
@@ -94,6 +132,7 @@ def read_block() -> str | None:
 
 def repl(client: Client, opt: Options) -> None:
     history: list[tuple[str, str]] = []
+    setup_readline()
     print("plamo-trans REPL  (blank line to translate; /target LANG, /clear, /quit)", file=sys.stderr)
     while True:
         try:

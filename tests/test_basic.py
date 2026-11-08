@@ -31,3 +31,23 @@ def test_kwargs_and_reserved():
 def test_glossary_and_history():
     assert parse_glossary(["管理画面 => dashboard"]) == [("管理画面", "dashboard")]
     assert len(trim_history([("a", "b")] * 10)) == 4
+
+
+def test_read_block_blank_line_and_commands(monkeypatch):
+    from plamo_trans import cli
+
+    def feed(lines):
+        it = iter(lines)
+
+        def fake_input(*_):
+            try:
+                return next(it)
+            except StopIteration:
+                raise EOFError
+
+        monkeypatch.setattr("builtins.input", fake_input)
+
+    feed(["a", "b", "", "/clear"])
+    assert cli.read_block() == "a\nb"
+    assert cli.read_block() == "/clear"
+    assert cli.read_block() is None
