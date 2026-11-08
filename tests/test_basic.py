@@ -51,3 +51,22 @@ def test_read_block_blank_line_and_commands(monkeypatch):
     assert cli.read_block() == "a\nb"
     assert cli.read_block() == "/clear"
     assert cli.read_block() is None
+
+
+def test_safety_limits_and_sanitize():
+    import io
+    import pytest
+    from plamo_trans import cli
+    from plamo_trans.client import Options, TranslateError, check_text
+
+    with pytest.raises(TranslateError):
+        check_text("x" * 30_001)
+    with pytest.raises(TranslateError):
+        Options(context="<|plamo:bos|>").check_extras()
+    with pytest.raises(TranslateError):
+        Options(glossary=[("a", "<|plamo:tag|>")]).check_extras()
+    buf = io.StringIO()
+    cli.SafeOut(buf).write("a\x1b[31mb\tc\nd\x9be\x07")
+    assert buf.getvalue() == "a[31mb\tc\nde"
+    with pytest.raises(TranslateError):
+        cli._read_limited(io.StringIO("x" * (cli.MAX_INPUT_CHARS + 1)))

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -30,6 +31,31 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-tokens", type=int, default=2048)
     p.add_argument("-v", "--verbose", action="store_true", help="show llama server logs")
     return p
+
+
+MAX_INPUT_CHARS = 2_000_000  # hard cap for stdin / files read into memory
+
+_CTRL = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f]")  # keeps \n and \t
+
+
+class SafeOut:
+    """stdout wrapper for terminals: strips control chars (ESC etc.) so text cannot drive the terminal."""
+
+    def __init__(self, f):
+        self._f = f
+
+    def write(self, s: str) -> int:
+        return self._f.write(_CTRL.sub("", s))
+
+    def __getattr__(self, name):
+        return getattr(self._f, name)
+
+
+def _read_limited(f) -> str:
+    text = f.read(MAX_INPUT_CHARS + 1)
+    if len(text) > MAX_INPUT_CHARS:
+        raise TranslateError(f"input is larger than {MAX_INPUT_CHARS} chars")
+    return text
 
 
 def _read_arg(v: str) -> str:
@@ -172,14 +198,18 @@ def main(argv: list[str] | None = None) -> int:
         opt = Options(a.target, a.source, a.form, parse_glossary(a.glossary),
                       _read_arg(a.context) if a.context else None, a.max_tokens)
         opt.validate()
+        opt.check_extras()
+        if sys.stdout.isatty():
+            sys.stdout = SafeOut(sys.stdout)
         if a.interactive:
             src = None
         elif a.file:
-            src = Path(a.file).read_text(encoding="utf-8")
+            with open(a.file, encoding="utf-8") as f:
+                src = _read_limited(f)
         elif a.text:
             src = " ".join(a.text)
         elif not sys.stdin.isatty():
-            src = sys.stdin.read()
+            src = _read_limited(sys.stdin)
         else:
             build_parser().print_usage(sys.stderr)
             return 2
