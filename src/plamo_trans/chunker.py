@@ -57,10 +57,23 @@ def split_document(text: str, max_chars: int = 2000) -> list[Segment]:
     return out
 
 
+def _hard_split(text: str, max_chars: int) -> list[str]:
+    """Bounded fallback for a single sentence longer than max_chars: break at whitespace, else cut."""
+    out = []
+    while len(text) > max_chars:
+        cut = text.rfind(" ", 0, max_chars + 1)
+        if cut <= 0:
+            cut = max_chars
+        out.append(text[:cut])
+        text = text[cut:].lstrip(" ") if cut != max_chars or text[cut:cut + 1] == " " else text[cut:]
+    out.append(text)
+    return out
+
+
 def _split_long(text: str, max_chars: int) -> list[str]:
     sents = re.split(r"(?<=[。！？.!?])\s*", text)
     parts, cur = [], ""
-    for s in sents:
+    for s in (q for sent in sents for q in _hard_split(sent, max_chars)):
         if cur and len(cur) + len(s) > max_chars:
             parts.append(cur)
             cur = ""

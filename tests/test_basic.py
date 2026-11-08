@@ -70,3 +70,12 @@ def test_safety_limits_and_sanitize():
     assert buf.getvalue() == "a[31mb\tc\nde"
     with pytest.raises(TranslateError):
         cli._read_limited(io.StringIO("x" * (cli.MAX_INPUT_CHARS + 1)))
+
+
+def test_split_document_bounds_unpunctuated_paragraph():
+    from plamo_trans.chunker import split_document
+
+    for text in ("word " * 6201, "あ" * 31_000):
+        segs = split_document(text)
+        assert all(len(t) <= 2000 for t, tr, _ in segs if tr)
+        assert "".join(t for t, _, _ in segs).replace(" ", "").replace("\n", "") == text.replace(" ", "")
