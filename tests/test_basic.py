@@ -79,3 +79,11 @@ def test_split_document_bounds_unpunctuated_paragraph():
         segs = split_document(text)
         assert all(len(t) <= 2000 for t, tr, _ in segs if tr)
         assert "".join(t for t, _, _ in segs).replace(" ", "").replace("\n", "") == text.replace(" ", "")
+
+
+def test_hard_split_keeps_word_boundaries():
+    from plamo_trans.chunker import _hard_split, split_document
+
+    t = "word " * 400 + "x"
+    assert "".join(_hard_split(t, 2000)) == t
+    assert "".join(s for s, _, _ in split_document(t)).endswith("word x")
